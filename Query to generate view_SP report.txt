@@ -1,0 +1,40 @@
+-- view details
+
+select distinct v.object_id viewId,v.name as ViewName,d.depid,d.readobj,o.name as TableName
+from 
+sys.views v left outer join sys.sysdepends d on v.object_id=d.id 
+left outer join sys.objects o on o.object_id=d.depid and v.schema_id=o.schema_id
+order by ViewName
+
+
+--View Consumers:- 
+
+select vw.*, isnull(pro.ProcName,'') as ProcName from
+(
+ select distinct t.object_id,t.name as ProcName,d.depid,d.readobj,o.name as DependentObject
+from 
+sys.procedures t left outer join sys.sysdepends d on t.object_id=d.id 
+left outer join sys.objects o on o.object_id=d.depid ) pro
+right outer join
+(
+select distinct v.object_id viewId,v.name as ViewName, d.depid,d.readobj,o.name as TableName
+from 
+sys.views v left outer join sys.sysdepends d on v.object_id=d.id 
+left outer join sys.objects o on o.object_id=d.depid and v.schema_id=o.schema_id ) vw
+on pro.depid=vw.viewId
+where vw.viewId not in (1557632642,1637632927)
+order by vw.ViewName
+
+--Stored proc
+
+ select distinct t.object_id,t.name as ProcName,d.depid , --d.readobj,d.resultobj, d.selall,
+ isnull(o.name,'') as DependentObject, len(m.definition) as size,
+ (case when  m.object_id is null then '' else 'Explicit Transaction' end )  TransactionType
+ ,t.create_date,t.modify_date
+from 
+sys.procedures t left outer join sys.sysdepends d on t.object_id=d.id 
+left outer join sys.objects o on o.object_id=d.depid and t.schema_id=o.schema_id
+left outer join
+(select object_id,definition from sys.sql_modules where definition like '%begin tran%') m on m.object_id=t.object_id 
+--where depid is null
+order by t.name
